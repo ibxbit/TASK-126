@@ -14,7 +14,10 @@
 # ── Stage 1: base ────────────────────────────────────────────────────
 # Shared base with Rust toolchain + Node.js + system libraries needed
 # to compile Tauri 2 on Linux.
-FROM rust:1.78-bookworm AS base
+FROM rust:1.82-bookworm AS base
+
+# Ensure cargo is in the path
+ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 # Tauri 2 Linux build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
