@@ -24,6 +24,13 @@ Thumbs.db
 *.db-shm
 shoreline.*
 
+# Local / temporary
+.tmp/
+.env
+.env.local
+.env.*.local
+*.log
+
 # Icons directory is checked in but the generated assets are not,
 # so contributors can regenerate them with `pnpm tauri icon`.
 src-tauri/icons/*.png
