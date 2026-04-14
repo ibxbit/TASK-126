@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────────────
+# Shoreline Property Operations Console — Docker Compose
+#
+# One-click start:
+#   docker compose up              → starts app (port 1420) + tests
+#   docker compose up app          → frontend only on http://localhost:1420
+#   docker compose run tests       → run full test suite and exit
+#
+# Verify services:
+#   curl http://localhost:1420     → Vite dev server (HTML response)
+#   docker compose logs tests     → test results (exit code 0 = pass)
+# ─────────────────────────────────────────────────────────────────────
+
+services:
+  # ── app ────────────────────────────────────────────────────────────
+  # Serves the Vite/React frontend on port 1420.
+  # Verifiable via browser or curl http://localhost:1420.
+  app:
+    build:
+      context: .
+      target: app
+    ports:
+      - "1420:1420"
+    environment:
+      - VITE_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1420"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── tests ──────────────────────────────────────────────────────────
+  # Runs the full test suite (Rust + TypeScript + Vitest) and exits.
+  # Exit code 0 = all tests pass.  Non-zero = failure.
+  # View results: docker compose logs tests
+  tests:
+    build:
+      context: .
+      target: tests
+    environment:
+      - RUST_BACKTRACE=1
+    # Tests run once and exit; don't restart.
+    restart: "no"

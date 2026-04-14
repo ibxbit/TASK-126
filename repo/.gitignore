@@ -1,0 +1,32 @@
+# Rust build artifacts
+target/
+src-tauri/target/
+src-tauri/gen/
+**/*.rs.bk
+Cargo.lock
+
+# Frontend
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+
+# App-generated local data (should never be committed)
+*.db
+*.db-wal
+*.db-shm
+shoreline.*
+
+# Icons directory is checked in but the generated assets are not,
+# so contributors can regenerate them with `pnpm tauri icon`.
+src-tauri/icons/*.png
+src-tauri/icons/*.ico
+src-tauri/icons/*.icns
+!src-tauri/icons/README.md

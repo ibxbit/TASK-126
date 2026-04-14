@@ -1,0 +1,31 @@
+# Build artifacts — rebuilt inside the container
+target/
+src-tauri/target/
+src-tauri/gen/
+dist/
+.vite/
+coverage/
+
+# Dependencies — reinstalled inside the container
+node_modules/
+
+# Git history — not needed for build or tests
+.git/
+
+# Temporary / local files
+.tmp/
+*.db
+*.db-wal
+*.db-shm
+
+# Editor / OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Docker files (avoid recursive context)
+Dockerfile
+docker-compose.yml
+.dockerignore

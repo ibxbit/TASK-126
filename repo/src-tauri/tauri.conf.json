@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Shoreline Property Operations Console",
+  "version": "0.1.0",
+  "identifier": "com.shoreline.propops",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Shoreline Property Operations Console",
+        "width": 1600,
+        "height": 1000,
+        "minWidth": 1280,
+        "minHeight": 720,
+        "resizable": true,
+        "center": true,
+        "visible": true,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost"
+    },
+    "withGlobalTauri": false,
+    "trayIcon": {
+      "id": "shoreline_tray",
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": false,
+      "tooltip": "Shoreline Property Ops"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": [],
+    "copyright": "",
+    "category": "Business",
+    "shortDescription": "Offline-first property operations console",
+    "longDescription": "Shoreline Property Operations Console — offline desktop app for move-out cases, parcel queues, and claim resolution.",
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      }
+    }
+  }
+}
