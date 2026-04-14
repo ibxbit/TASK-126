@@ -419,7 +419,7 @@ mod tests {
         let history = MockHistory::default();
         let p = staff(tenant);
 
-        let err = transition(&p, &sm, &parcels, &history, TransitionInput {
+        let err = transition(&NoopAuditWriter, &p, &sm, &parcels, &history, TransitionInput {
             parcel_id: pid, tenant_id: tenant, to_state: ParcelState::Delivered,
             location: "Front Desk".into(), notes: None, occurred_at_unix: Some(1),
         }, None).unwrap_err();
@@ -437,7 +437,7 @@ mod tests {
         let history = MockHistory::default();
         let p = liaison(tenant);
 
-        let err = transition(&p, &sm, &parcels, &history, TransitionInput {
+        let err = transition(&NoopAuditWriter, &p, &sm, &parcels, &history, TransitionInput {
             parcel_id: pid, tenant_id: tenant, to_state: ParcelState::CheckedIn,
             location: "Front Desk".into(), notes: None, occurred_at_unix: Some(1),
         }, None).unwrap_err();
@@ -454,7 +454,7 @@ mod tests {
         };
         let history = MockHistory::default();
         let p = staff(tenant);
-        let err = transition(&p, &sm, &parcels, &history, TransitionInput {
+        let err = transition(&NoopAuditWriter, &p, &sm, &parcels, &history, TransitionInput {
             parcel_id: pid, tenant_id: tenant, to_state: ParcelState::CheckedIn,
             location: "   ".into(), notes: None, occurred_at_unix: Some(1),
         }, None).unwrap_err();
@@ -474,7 +474,7 @@ mod tests {
         };
         let history = MockHistory::default();
         let p = staff(tenant_b);
-        let err = transition(&p, &sm, &parcels, &history, TransitionInput {
+        let err = transition(&NoopAuditWriter, &p, &sm, &parcels, &history, TransitionInput {
             parcel_id: pid, tenant_id: tenant_b, to_state: ParcelState::CheckedIn,
             location: "Front Desk".into(), notes: None, occurred_at_unix: Some(1),
         }, None).unwrap_err();

@@ -170,6 +170,7 @@ impl KeyStore for InMemoryKeyStore {
 
 // ── MasterKey (zeroed on drop) ──────────────────────────────────────────
 
+#[derive(Debug)]
 pub struct MasterKey {
     bytes: [u8; KEY_LEN],
 }

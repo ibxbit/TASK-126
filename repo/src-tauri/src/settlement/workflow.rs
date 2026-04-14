@@ -176,7 +176,7 @@ fn next_status(
         }
 
         (Approved, MarkPaid) => Ok(Paid),
-        (_, Void) if !view.status.is_terminal() => Ok(Void),
+        (_, SettlementEvent::Void) if !view.status.is_terminal() => Ok(SettlementStatus::Void),
         (_, Reopen) if view.status.is_terminal() => Ok(Reopened),
 
         (status, ev) => Err(WorkflowError::IllegalTransition {

@@ -2,10 +2,12 @@
 //!
 //! Format of the BLOB persisted in SQLite:
 //!
-//!     ┌────────┬───────────────────────────────────────────────┐
-//!     │ nonce  │ AES-256-GCM(ciphertext || auth_tag)           │
-//!     │ 12 B   │                                               │
-//!     └────────┴───────────────────────────────────────────────┘
+//! ```text
+//! ┌────────┬───────────────────────────────────────────────┐
+//! │ nonce  │ AES-256-GCM(ciphertext || auth_tag)           │
+//! │ 12 B   │                                               │
+//! └────────┴───────────────────────────────────────────────┘
+//! ```
 //!
 //! The master key is derived once per session from the operator's
 //! unlock password (argon2id → 32 bytes). Callers MUST NOT reuse a

@@ -3,7 +3,6 @@
 use std::sync::{Arc, MutexGuard};
 
 use rusqlite::Connection;
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::db::connection::Database;

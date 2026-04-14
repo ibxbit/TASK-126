@@ -79,12 +79,12 @@ pub trait ExperimentRepository {
 
 /// Pure decision: given an active experiment + its variants + a
 /// subject, deterministically pick a variant. Does NOT persist.
-pub fn decide_variant(
+pub fn decide_variant<'a>(
     experiment: &Experiment,
-    variants: &[Variant],
+    variants: &'a [Variant],
     subject_id: &Uuid,
     now_unix: i64,
-) -> Result<&Variant, AssignmentError> {
+) -> Result<&'a Variant, AssignmentError> {
     if !experiment.enabled
         || now_unix < experiment.start_at_unix
         || now_unix >= experiment.end_at_unix

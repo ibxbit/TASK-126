@@ -83,7 +83,7 @@ pub fn run() {
             windows::cmd_close_window,
             windows::cmd_list_windows,
             // Context menus
-            menu::cmd_show_context_menu,
+            menu::context::cmd_show_context_menu,
             // Reminders
             tray::reminders::cmd_schedule_reminder,
             tray::reminders::cmd_cancel_reminder,

@@ -33,7 +33,7 @@ impl ShortcutAction {
 }
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
 pub enum ShortcutError {
     #[error("failed to register shortcut '{0}': {1}")]
     Register(String, String),

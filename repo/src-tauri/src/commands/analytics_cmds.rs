@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::analytics::dashboard::{compute_funnel, compute_quality, compute_retention, FunnelDefinition, FunnelResult, QualityMetrics, RetentionResult, RetentionInput};
 use crate::analytics::events::{track_event, EventInput, TrackedEvent};
-use crate::analytics::experiments::{assign_variant, VariantAssignment};
+use crate::analytics::experiments::assign_variant;
 use crate::analytics::exports;
 use crate::db::connection::Database;
 use crate::db::repos::{SqliteEventRepo, SqliteExperimentRepo};

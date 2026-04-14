@@ -3,7 +3,6 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::auth::Permission;
 use crate::db::connection::Database;
 use crate::db::repos::SqliteRuleRepo;
 use crate::ipc::{guard, IpcError, SessionState};
@@ -89,7 +88,7 @@ mod tests {
         let candidate = Assignment {
             resource_id: Uuid::new_v4(),
             subject_id: None,
-            window: crate::scheduling::constraints::TimeWindow {
+            window: crate::scheduling::rules::TimeWindow {
                 start_unix: 1000,
                 end_unix: 2000,
             },

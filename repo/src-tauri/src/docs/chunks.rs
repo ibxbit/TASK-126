@@ -64,6 +64,12 @@ impl From<StorageError> for ChunkError {
     }
 }
 
+impl From<std::io::Error> for ChunkError {
+    fn from(e: std::io::Error) -> Self {
+        ChunkError::Storage(e.to_string())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UploadSession {
     pub id: Uuid,

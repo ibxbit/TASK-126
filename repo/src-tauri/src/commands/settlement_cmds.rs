@@ -3,9 +3,8 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::auth::Permission;
 use crate::db::connection::Database;
-use crate::db::repos::{SqliteApprovalRepo, SqliteAuditWriter, SqliteSettlementRepo};
+use crate::db::repos::{SqliteApprovalRepo, SqliteSettlementRepo};
 use crate::ipc::{guard, IpcError, SessionState};
 use crate::settlement::approval::{approve_settlement, prepare_settlement, ApprovalRecord};
 use crate::settlement::statement::{
@@ -94,7 +93,7 @@ pub fn cmd_settlement_check_request(
     db: tauri::State<'_, Arc<Database>>,
     settlement_id: Uuid,
     payee_name: String,
-    memo: Option<String>,
+    _memo: Option<String>,
 ) -> Result<serde_json::Value, IpcError> {
     guard::require_authenticated(session.inner())?;
     let inputs = hydrate_statement_inputs(db.inner(), &settlement_id)?;
@@ -229,7 +228,12 @@ mod tests {
             resident_display_name: "<script>alert('xss')</script>".into(),
             unit_label: Some("4B".into()),
             move_out_date_unix: 1_700_000_000,
-            deposits: vec![],
+            deposits: vec![DepositInput {
+                id: Uuid::new_v4(),
+                amount_cents: 100,
+                currency: "USD".into(),
+                received_at_unix: 1_700_000_000,
+            }],
             deductions: vec![],
             generated_at_unix: 1_700_000_000,
         };

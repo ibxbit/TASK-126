@@ -1,7 +1,7 @@
 //! SQLite-backed AuditWriter.
 
 use rusqlite::Connection;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, MutexGuard};
 
 use crate::audit::{AuditLog, AuditWriter};
 use crate::db::connection::Database;

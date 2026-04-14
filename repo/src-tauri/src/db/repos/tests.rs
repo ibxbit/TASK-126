@@ -9,15 +9,17 @@ mod tests {
     use crate::audit::{AuditLog, AuditRole, AuditWriter, NewAuditLog};
     use crate::auth::context::{Principal, TenantScope};
     use crate::auth::Role;
-    use crate::claims::machine::{ClaimRepository, ClaimView};
+    use crate::claims::machine::ClaimRepository;
     use crate::claims::state::ClaimStatus;
     use crate::claims::timeout::ExpiredClaimFinder;
     use crate::db::connection::Database;
     use crate::db::repos::*;
     use crate::parcel::state::ParcelState;
     use crate::parcel::transition::{ParcelRepository, TransitionRepository};
+    use crate::scheduling::rules::RuleRepository;
     use crate::settlement::approval::{ApprovalRepository, ApprovalRecord, ApprovalStep};
     use crate::settlement::workflow::{SettlementRepository, SettlementStatus};
+    use crate::sharing::expiry::PackageRepository;
 
     fn setup() -> Arc<Database> {
         let db = Database::open_in_memory().expect("open in-memory DB");
@@ -560,13 +562,13 @@ mod tests {
 
         use crate::claims::timeout::enforce_timeout_lazy;
         let view = enforce_timeout_lazy(
-            &repo, &audit, Uuid::nil(), &cid, 1_700_000_000,
+            &repo, &audit, user_id(), &cid, 1_700_000_000,
         ).unwrap();
         assert_eq!(view.status, ClaimStatus::AutoCancelled);
 
         // Second call is idempotent.
         let view2 = enforce_timeout_lazy(
-            &repo, &audit, Uuid::nil(), &cid, 1_700_000_001,
+            &repo, &audit, user_id(), &cid, 1_700_000_001,
         ).unwrap();
         assert_eq!(view2.status, ClaimStatus::AutoCancelled);
     }
@@ -706,13 +708,12 @@ mod tests {
         let db = setup();
         // First insert an attachment.
         let aid = Uuid::new_v4();
-        let c = db.conn();
-        c.execute(
+        db.conn().execute(
             "INSERT INTO attachments (id, tenant_id, entity_kind, entity_id, display_name_enc,
-             mime_type, byte_size, sha256_hex, relative_path_enc, version_no,
-             created_at, updated_at, created_by)
-             VALUES (?1, ?2, 'case', ?3, X'00', 'text/plain', 100, 'abc', X'00', 1,
-                     1700000000, 1700000000, ?4)",
+             mime_type, byte_size, sha256_hex, relative_path_enc,
+             created_at, created_by)
+             VALUES (?1, ?2, 'case', ?3, X'00', 'text/plain', 100, 'abc', X'00',
+                     1700000000, ?4)",
             rusqlite::params![aid.to_string(), tenant_id().to_string(),
                               Uuid::new_v4().to_string(), user_id().to_string()],
         ).unwrap();
@@ -722,7 +723,7 @@ mod tests {
         repo.add(&aid, "review", Some(&user_id())).unwrap();
 
         // Verify tags.
-        let tag_count: i64 = c.query_row(
+        let tag_count: i64 = db.conn().query_row(
             "SELECT COUNT(*) FROM attachment_tags WHERE attachment_id = ?1",
             [aid.to_string()], |r| r.get(0),
         ).unwrap();
@@ -730,7 +731,7 @@ mod tests {
 
         // Remove one tag.
         repo.remove(&aid, "urgent").unwrap();
-        let tag_count2: i64 = c.query_row(
+        let tag_count2: i64 = db.conn().query_row(
             "SELECT COUNT(*) FROM attachment_tags WHERE attachment_id = ?1",
             [aid.to_string()], |r| r.get(0),
         ).unwrap();

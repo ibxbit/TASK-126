@@ -14,7 +14,7 @@
 # ── Stage 1: base ────────────────────────────────────────────────────
 # Shared base with Rust toolchain + Node.js + system libraries needed
 # to compile Tauri 2 on Linux.
-FROM rust:1.82-bookworm AS base
+FROM rust:1.88-bookworm AS base
 
 # Ensure cargo is in the path
 ENV PATH="/usr/local/cargo/bin:${PATH}"
@@ -75,6 +75,19 @@ FROM deps AS build
 
 # Copy full source
 COPY . .
+
+# Ensure dist/ exists for tauri::generate_context!() at compile time
+RUN mkdir -p dist
+
+# Generate placeholder icons required by tauri::generate_context!()
+# (Real icons are gitignored; contributors regenerate via `pnpm tauri icon`)
+RUN mkdir -p src-tauri/icons \
+    && for f in 32x32.png 128x128.png 128x128@2x.png icon.png; do \
+         echo -n 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' \
+         | base64 -d > "src-tauri/icons/$f"; \
+       done \
+    && printf '\x00\x00\x01\x00\x01\x00\x01\x01\x00\x00\x01\x00\x18\x00\x30\x00\x00\x00\x16\x00\x00\x00' \
+       > src-tauri/icons/icon.ico
 
 # Compile Rust test binaries (catches compile errors early in build)
 RUN cd src-tauri && cargo test --all-features --no-run 2>&1 || true

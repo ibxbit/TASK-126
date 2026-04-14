@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use rusqlite::OptionalExtension;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::auth::context::{Principal, TenantScope};

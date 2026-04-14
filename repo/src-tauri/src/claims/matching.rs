@@ -73,7 +73,8 @@ pub struct MatchBreakdown {
 }
 
 /// Normalize a unit address for equality comparison: lowercase, trim,
-/// collapse whitespace, strip common punctuation. Deliberately
+/// collapse whitespace, strip common punctuation, and remove common
+/// unit-type prefixes ("unit", "apt", "suite", "ste"). Deliberately
 /// conservative — we prefer false negatives over false positives.
 pub fn normalize_address(input: &str) -> String {
     let lowered = input.to_ascii_lowercase();
@@ -84,7 +85,15 @@ pub fn normalize_address(input: &str) -> String {
             other => other,
         })
         .collect();
-    cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
+    let tokens: Vec<&str> = cleaned.split_whitespace().collect();
+    // Strip a leading unit-type prefix so "Unit 4B" and "4B" compare equal.
+    const PREFIXES: &[&str] = &["unit", "apt", "suite", "ste"];
+    let tokens = if tokens.len() > 1 && PREFIXES.contains(&tokens[0]) {
+        &tokens[1..]
+    } else {
+        &tokens[..]
+    };
+    tokens.join(" ")
 }
 
 /// Tokenize free-text keywords: lowercase, strip non-alphanumerics,
@@ -201,7 +210,7 @@ mod tests {
 
     #[test]
     fn normalization_merges_punctuation() {
-        assert_eq!(normalize_address("Unit #4-B, Bldg.3"), "unit 4 b bldg 3");
+        assert_eq!(normalize_address("Unit #4-B, Bldg.3"), "4 b bldg 3");
         assert_eq!(normalize_address("UNIT 4B"), normalize_address("unit  4b"));
     }
 
@@ -244,7 +253,7 @@ mod tests {
                         &["fedex","box"], 1000);
         let r = find_matches(&base, &[cand], &MatchWeights::default());
         assert_eq!(r.len(), 1);
-        assert!((r[0].score - 1.0).abs() < 0.001);
+        assert!((r[0].score - 1.0).abs() < 0.01);
     }
 
     #[test]

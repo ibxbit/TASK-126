@@ -239,13 +239,23 @@ mod tests {
         }
     }
 
-    #[derive(Default)]
     struct MockOps {
         snapshot_calls: RefCell<u32>,
         stage_calls: RefCell<u32>,
         deletes: RefCell<Vec<PathBuf>>,
         quiesce_calls: RefCell<u32>,
         quiesce_result: RefCell<Result<(), String>>,
+    }
+    impl Default for MockOps {
+        fn default() -> Self {
+            Self {
+                snapshot_calls: RefCell::new(0),
+                stage_calls: RefCell::new(0),
+                deletes: RefCell::new(Vec::new()),
+                quiesce_calls: RefCell::new(0),
+                quiesce_result: RefCell::new(Ok(())),
+            }
+        }
     }
     impl InstallerOps for MockOps {
         fn quiesce(&self) -> Result<(), String> {

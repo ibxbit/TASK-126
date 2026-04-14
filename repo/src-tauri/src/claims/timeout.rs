@@ -348,8 +348,6 @@ mod tests {
 
     // ── Lazy timeout enforcement ────────────────────────────────────
 
-    use crate::audit::NoopAuditWriter;
-
     fn repo_with(status: ClaimStatus, deadline: Option<i64>, reopened: u32) -> FakeRepo {
         let claim_id = Uuid::new_v4();
         FakeRepo {

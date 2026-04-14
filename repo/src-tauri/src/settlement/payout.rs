@@ -8,7 +8,7 @@
 //! The settlement state machine then transitions to Paid once the
 //! check is marked printed (a separate user action).
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
 

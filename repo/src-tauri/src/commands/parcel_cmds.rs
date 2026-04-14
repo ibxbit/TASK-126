@@ -3,12 +3,11 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::audit::NoopAuditWriter;
 use crate::db::connection::Database;
 use crate::db::repos::{SqliteAuditWriter, SqliteParcelRepo, SqliteTransitionRepo};
 use crate::ipc::{guard, IpcError, SessionState};
 use crate::auth::Permission;
-use crate::parcel::machine::{default_guards, StateMachine};
+use crate::parcel::machine::{default_guards, default_rules, StateMachine};
 use crate::parcel::state::ParcelState;
 use crate::parcel::transition::{TransitionInput, TransitionRecord};
 
@@ -27,7 +26,7 @@ pub fn cmd_parcel_available_transitions(
     current: Option<ParcelState>,
 ) -> Result<Vec<ParcelState>, IpcError> {
     guard::require_authenticated(session.inner())?;
-    let sm = StateMachine::new(vec![], default_guards());
+    let sm = StateMachine::new(default_rules(), default_guards());
     Ok(sm.available_from(current))
 }
 
@@ -41,7 +40,7 @@ pub fn cmd_transition_parcel(
     let parcel_repo = SqliteParcelRepo::new(Arc::clone(db.inner()));
     let trans_repo = SqliteTransitionRepo::new(Arc::clone(db.inner()));
     let audit = SqliteAuditWriter::new(Arc::clone(db.inner()));
-    let sm = StateMachine::new(vec![], default_guards());
+    let sm = StateMachine::new(default_rules(), default_guards());
 
     crate::parcel::transition::transition(
         &audit,
@@ -79,7 +78,7 @@ mod tests {
 
     #[test]
     fn default_state_machine_has_available_transitions_from_none() {
-        let sm = StateMachine::new(vec![], default_guards());
+        let sm = StateMachine::new(default_rules(), default_guards());
         let avail = sm.available_from(None);
         assert!(!avail.is_empty(), "should have transitions from initial state");
         assert!(avail.contains(&ParcelState::CheckedIn));
@@ -87,14 +86,14 @@ mod tests {
 
     #[test]
     fn default_state_machine_checked_in_has_transitions() {
-        let sm = StateMachine::new(vec![], default_guards());
+        let sm = StateMachine::new(default_rules(), default_guards());
         let avail = sm.available_from(Some(ParcelState::CheckedIn));
         assert!(!avail.is_empty());
     }
 
     #[test]
     fn default_state_machine_delivered_has_no_check_in_transition() {
-        let sm = StateMachine::new(vec![], default_guards());
+        let sm = StateMachine::new(default_rules(), default_guards());
         let avail = sm.available_from(Some(ParcelState::Delivered));
         // Delivered should not be able to go back to CheckedIn.
         assert!(!avail.contains(&ParcelState::CheckedIn));

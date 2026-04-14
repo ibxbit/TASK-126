@@ -49,7 +49,7 @@ pub enum RecoveryOutcome {
 }
 
 impl RecoveryOutcome {
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             RecoveryOutcome::CleanStart => "clean_start",
             RecoveryOutcome::UncleanRepaired => "unclean_repaired",

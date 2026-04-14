@@ -52,7 +52,7 @@ impl GuardCode {
     }
 }
 
-pub struct GuardContext<'a> {
+pub struct GuardContext {
     pub parcel_id: Uuid,
     pub tenant_id: Uuid,
     pub from: Option<ParcelState>,
@@ -210,6 +210,54 @@ pub fn guard_for(code: GuardCode) -> GuardFn {
     }
 }
 
+/// The default transition rules shipped with the app. These encode
+/// the standard parcel lifecycle: genesis → checked_in → checked_out
+/// → delivered → receipt_confirmed, plus checked_in → returned_exception.
+pub fn default_rules() -> Vec<TransitionRule> {
+    vec![
+        TransitionRule {
+            rule_id: Uuid::new_v4(),
+            from_state: GENESIS.to_string(),
+            to_state: ParcelState::CheckedIn,
+            guard_code: None,
+            required_permission: Some("parcel_operate".into()),
+            enabled: true,
+        },
+        TransitionRule {
+            rule_id: Uuid::new_v4(),
+            from_state: "checked_in".to_string(),
+            to_state: ParcelState::CheckedOut,
+            guard_code: None,
+            required_permission: Some("parcel_operate".into()),
+            enabled: true,
+        },
+        TransitionRule {
+            rule_id: Uuid::new_v4(),
+            from_state: "checked_out".to_string(),
+            to_state: ParcelState::Delivered,
+            guard_code: Some(GuardCode::RequiresCheckInExists),
+            required_permission: Some("parcel_operate".into()),
+            enabled: true,
+        },
+        TransitionRule {
+            rule_id: Uuid::new_v4(),
+            from_state: "delivered".to_string(),
+            to_state: ParcelState::ReceiptConfirmed,
+            guard_code: None,
+            required_permission: Some("parcel_operate".into()),
+            enabled: true,
+        },
+        TransitionRule {
+            rule_id: Uuid::new_v4(),
+            from_state: "checked_in".to_string(),
+            to_state: ParcelState::ReturnedException,
+            guard_code: None,
+            required_permission: Some("parcel_operate".into()),
+            enabled: true,
+        },
+    ]
+}
+
 /// Convenience: the default guard registry shipped with the app.
 /// Built from the full list of `GuardCode` variants so any new
 /// variant is registered automatically.
@@ -242,7 +290,7 @@ mod tests {
         }
     }
 
-    fn ctx(from: Option<ParcelState>, to: ParcelState, has_check_in: bool) -> GuardContext<'static> {
+    fn ctx(from: Option<ParcelState>, to: ParcelState, has_check_in: bool) -> GuardContext {
         GuardContext {
             parcel_id: Uuid::new_v4(),
             tenant_id: Uuid::new_v4(),

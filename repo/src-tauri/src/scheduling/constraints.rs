@@ -9,7 +9,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::scheduling::rules::{DistributionMode, Rule, RuleKind, RuleSet, RuleSpec, TimeWindow};
+pub use crate::scheduling::rules::TimeWindow;
+use crate::scheduling::rules::{DistributionMode, Rule, RuleSet, RuleSpec};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -196,7 +197,7 @@ fn peak_concurrency(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scheduling::rules::DistributionMode;
+    use crate::scheduling::rules::{DistributionMode, RuleKind};
 
     fn rs(rules: Vec<Rule>) -> RuleSet {
         RuleSet {

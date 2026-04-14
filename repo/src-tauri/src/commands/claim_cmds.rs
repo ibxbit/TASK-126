@@ -4,12 +4,11 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::claims::machine::{apply_transition, ClaimEvent, TransitionOutcome};
-use crate::claims::matching::{find_matches, ClaimFeatures, MatchCandidate, MatchWeights};
+use crate::claims::matching::MatchCandidate;
 use crate::claims::timeout::enforce_timeout_lazy;
 use crate::db::connection::Database;
 use crate::db::repos::{SqliteAuditWriter, SqliteClaimRepo};
 use crate::ipc::{guard, IpcError, SessionState};
-use crate::auth::Permission;
 
 fn system_uid() -> Uuid {
     // In production, bootstrap stores a dedicated system user id.
@@ -46,7 +45,7 @@ pub fn cmd_claim_transition(
 #[tauri::command]
 pub fn cmd_find_claim_matches(
     session: tauri::State<'_, SessionState>,
-    claim_id: Uuid,
+    _claim_id: Uuid,
 ) -> Result<Vec<MatchCandidate>, IpcError> {
     guard::require_authenticated(session.inner())?;
     // Matching is a pure function over features. In a full
@@ -60,6 +59,7 @@ pub fn cmd_find_claim_matches(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::claims::matching::{find_matches, ClaimFeatures, MatchWeights};
     use crate::claims::state::ClaimKind;
 
     #[test]

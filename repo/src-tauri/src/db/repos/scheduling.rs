@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::db::connection::Database;
 use crate::scheduling::constraints::Severity;
-use crate::scheduling::rules::{Rule, RuleKind, RuleRepository, RuleSet, RuleSpec, RuleSetError};
+use crate::scheduling::rules::{Rule, RuleKind, RuleRepository, RuleSet, RuleSpec};
 
 pub struct SqliteRuleRepo { db: Arc<Database> }
 impl SqliteRuleRepo { pub fn new(db: Arc<Database>) -> Self { Self { db } } }

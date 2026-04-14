@@ -3,6 +3,8 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use rusqlite::OptionalExtension;
+
 use crate::db::connection::Database;
 use crate::db::repos::{SqliteAttachmentSearch, SqliteChunkRepo, SqliteTagRepo};
 use crate::docs::chunks;
@@ -104,7 +106,7 @@ pub fn cmd_attachment_search(
 pub fn cmd_attachment_add_tag(
     session: tauri::State<'_, SessionState>,
     db: tauri::State<'_, Arc<Database>>,
-    tenant_id: Uuid,
+    _tenant_id: Uuid,
     attachment_id: Uuid,
     tag: String,
 ) -> Result<(), IpcError> {
@@ -118,7 +120,7 @@ pub fn cmd_attachment_add_tag(
 pub fn cmd_attachment_remove_tag(
     session: tauri::State<'_, SessionState>,
     db: tauri::State<'_, Arc<Database>>,
-    tenant_id: Uuid,
+    _tenant_id: Uuid,
     attachment_id: Uuid,
     tag: String,
 ) -> Result<(), IpcError> {
@@ -133,7 +135,7 @@ pub fn cmd_attachment_preview(
     db: tauri::State<'_, Arc<Database>>,
     tenant_id: Uuid,
     attachment_id: Uuid,
-    version_no: Option<u32>,
+    _version_no: Option<u32>,
 ) -> Result<serde_json::Value, IpcError> {
     guard::require_authenticated(session.inner())?;
     // Preview requires reading the file from disk + decrypting the

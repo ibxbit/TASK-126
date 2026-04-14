@@ -140,6 +140,7 @@ pub fn build_share_package(
         return Err(PackageError::BadExpiry);
     }
 
+    let password = input.password.clone();
     let package_id = Uuid::new_v4();
     let watermark = WatermarkSpec {
         username: principal.username.clone(),
@@ -161,9 +162,9 @@ pub fn build_share_package(
     let mut zip = zip::ZipWriter::new(cursor);
 
     // AES-256 encryption is provided by the `aes` feature of the zip crate.
-    let opts: SimpleFileOptions = SimpleFileOptions::default()
+    let opts = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Deflated)
-        .with_aes_encryption(zip::AesMode::Aes256, &input.password);
+        .with_aes_encryption(zip::AesMode::Aes256, &password);
 
     let mut manifest_items: Vec<ManifestItem> = Vec::with_capacity(input.items.len());
 
@@ -214,7 +215,6 @@ pub fn build_share_package(
     zip.write_all(&manifest_bytes)?;
 
     zip.finish()?;
-    drop(zip);
 
     let mut h = Sha256::new();
     h.update(&buf);

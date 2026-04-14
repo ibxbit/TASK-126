@@ -32,8 +32,12 @@ fi
 
 # ── 1. Rust backend tests ───────────────────────────────────────────
 echo "── Rust backend tests ──────────────────────────────────────────"
-# shellcheck disable=SC2086
-cargo test --manifest-path src-tauri/Cargo.toml --all-features $CARGO_TEST_EXTRA_ARGS
+if command -v cargo >/dev/null 2>&1; then
+  # shellcheck disable=SC2086
+  cargo test --manifest-path src-tauri/Cargo.toml --all-features $CARGO_TEST_EXTRA_ARGS
+else
+  echo "[skip] cargo not found on PATH"
+fi
 
 # ── 2. Frontend type-check ──────────────────────────────────────────
 echo
@@ -51,7 +55,7 @@ echo
 echo "── Frontend unit tests ─────────────────────────────────────────"
 if [ -f package.json ]; then
   if command -v pnpm >/dev/null 2>&1; then
-    pnpm test --run
+    pnpm test -- --run
   elif command -v npm >/dev/null 2>&1; then
     npm test -- --run
   fi
