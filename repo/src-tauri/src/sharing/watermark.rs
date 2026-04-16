@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum WatermarkError {
     #[error("mime type '{0}' is not supported for watermarking")]
     Unsupported(String),

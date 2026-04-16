@@ -29,7 +29,7 @@ pub const KEY_LEN: usize = 32;
 pub const NONCE_LEN: usize = 12;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum CipherError {
     #[error("key length must be {expected} bytes, got {actual}")]
     BadKeyLength { expected: usize, actual: usize },

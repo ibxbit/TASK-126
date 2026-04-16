@@ -101,3 +101,45 @@ fn dispatch(app: &AppHandle, action: ShortcutAction) {
     }
     let _ = app.emit(EVENT_SHORTCUT, &payload);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shortcut_event_string_is_stable() {
+        // The frontend hard-codes this in `src/ipc/desktop.ts::onShortcut`.
+        assert_eq!(EVENT_SHORTCUT, "shortcut://fired");
+    }
+
+    #[test]
+    fn shortcut_action_as_str_round_trips_to_three_known_actions() {
+        // The React side uses these to switch on payload.action.
+        assert_eq!(ShortcutAction::QuickSearch.as_str(), "quick_search");
+        assert_eq!(ShortcutAction::NewCase.as_str(), "new_case");
+        assert_eq!(ShortcutAction::RenameTag.as_str(), "rename_tag");
+    }
+
+    #[test]
+    fn shortcut_action_serializes_with_snake_case_payload() {
+        let json = serde_json::to_string(&ShortcutAction::QuickSearch).unwrap();
+        assert_eq!(json, r#""quick_search""#);
+        let json = serde_json::to_string(&ShortcutAction::RenameTag).unwrap();
+        assert_eq!(json, r#""rename_tag""#);
+    }
+
+    #[test]
+    fn shortcut_event_payload_serializes_with_action_field() {
+        let evt = ShortcutEvent { action: "quick_search" };
+        let json = serde_json::to_string(&evt).unwrap();
+        assert!(json.contains(r#""action":"quick_search""#), "got: {json}");
+    }
+
+    #[test]
+    fn shortcut_error_serializes_with_type_tag() {
+        let e = ShortcutError::Register("quick_search".into(), "boom".into());
+        let json = serde_json::to_string(&e).unwrap();
+        // tag = "type", content = "data", rename_all snake_case
+        assert!(json.contains(r#""type":"register""#), "got: {json}");
+    }
+}

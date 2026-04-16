@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import App from "./App";
 
@@ -16,7 +16,9 @@ vi.mock("./ipc/desktop", () => ({
 }));
 
 import { currentUser } from "./ipc/auth";
+import { openWorkspace } from "./ipc/desktop";
 const mockCurrentUser = vi.mocked(currentUser);
+const mockOpenWorkspace = vi.mocked(openWorkspace);
 
 describe("App", () => {
   beforeEach(() => {
@@ -128,6 +130,48 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/sign out/i)).toBeInTheDocument();
+    });
+  });
+
+  it("logs error to console when openWorkspace fails", async () => {
+    mockCurrentUser.mockResolvedValueOnce({
+      user_id: "u1",
+      username: "admin",
+      role: "Administrator",
+      tenant_ids: ["t1"],
+    });
+    mockOpenWorkspace.mockRejectedValueOnce(new Error("IPC failed"));
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    render(<App />);
+
+    // Wait for dashboard to render
+    await waitFor(() => {
+      expect(screen.getByText(/move-out case/i)).toBeInTheDocument();
+    });
+
+    // Click the Move-Out Case card button to trigger the error path.
+    // The card is a <button> wrapping the title div.
+    const card = screen.getByText(/move-out case/i).closest("button");
+    expect(card).toBeTruthy();
+    fireEvent.click(card!);
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith("openWorkspace failed", expect.any(Error));
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  it("handles currentUser rejection gracefully", async () => {
+    // Simulate currentUser() throwing — App.tsx catches and sets user=null → login form.
+    mockCurrentUser.mockReturnValueOnce(Promise.reject(new Error("network")) as never);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sign in to continue")).toBeInTheDocument();
     });
   });
 });

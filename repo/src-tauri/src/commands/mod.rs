@@ -11,3 +11,6 @@ pub mod scheduling_cmds;
 pub mod settlement_cmds;
 pub mod sharing_cmds;
 pub mod system_cmds;
+
+#[cfg(test)]
+mod lifecycle_tests;

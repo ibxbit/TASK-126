@@ -32,7 +32,7 @@ use uuid::Uuid;
 use crate::docs::storage::StorageLayout;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum CleanupError {
     #[error("persistence error: {0}")]
     Persistence(String),

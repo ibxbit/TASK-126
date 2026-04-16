@@ -74,7 +74,7 @@ pub struct TransitionRule {
 }
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum StateMachineError {
     #[error("no rule permits transition {from} → {to}")]
     NoRule { from: String, to: String },

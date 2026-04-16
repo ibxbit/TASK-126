@@ -30,7 +30,7 @@ pub const EVENT_CLAIM_AUTO_CANCELLED: &str = "claim://auto_cancelled";
 const SWEEP_INTERVAL_SECS: u64 = 60;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum TimeoutError {
     #[error("claim not found: {0}")]
     NotFound(String),

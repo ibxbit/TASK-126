@@ -27,7 +27,7 @@ pub const DEFAULT_LIFETIME_SECONDS: i64 = 7 * 24 * 3600;
 const SWEEP_INTERVAL_SECS: u64 = 5 * 60;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum ExpiryError {
     #[error(transparent)]
     Auth(#[from] AuthError),

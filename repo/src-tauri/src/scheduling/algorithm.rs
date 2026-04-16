@@ -21,7 +21,7 @@ use crate::scheduling::constraints::{validate, Assignment, ConstraintReport};
 use crate::scheduling::rules::{RuleSet, TimeWindow};
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum ScheduleError {
     #[error("demand duration {got}s must be > 0")]
     InvalidDuration { got: i64 },

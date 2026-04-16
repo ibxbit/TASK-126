@@ -11,7 +11,7 @@ use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum ExportError {
     #[error("rows are not all JSON objects")]
     NotObjectShape,

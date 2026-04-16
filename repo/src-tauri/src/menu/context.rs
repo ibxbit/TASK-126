@@ -18,7 +18,7 @@ use thiserror::Error;
 use crate::ipc::{guard, IpcError, SessionState};
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum ContextMenuError {
     #[error("window not found: {0}")]
     WindowNotFound(String),
@@ -143,6 +143,115 @@ fn append_items(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn action_item_serializes_with_kind_tag() {
+        let item = ContextMenuItem::Action {
+            id: "transition.deliver".into(),
+            label: "Mark as Delivered".into(),
+            enabled: true,
+            accelerator: Some("Ctrl+D".into()),
+        };
+        let json = serde_json::to_string(&item).unwrap();
+        assert!(json.contains(r#""kind":"action""#), "got: {json}");
+        assert!(json.contains(r#""id":"transition.deliver""#));
+        assert!(json.contains(r#""accelerator":"Ctrl+D""#));
+    }
+
+    #[test]
+    fn separator_serializes_with_kind_tag_only() {
+        let item = ContextMenuItem::Separator;
+        let json = serde_json::to_string(&item).unwrap();
+        assert!(json.contains(r#""kind":"separator""#));
+    }
+
+    #[test]
+    fn submenu_serializes_with_nested_items() {
+        let item = ContextMenuItem::Submenu {
+            label: "More".into(),
+            items: vec![
+                ContextMenuItem::Action {
+                    id: "x".into(),
+                    label: "X".into(),
+                    enabled: false,
+                    accelerator: None,
+                },
+                ContextMenuItem::Separator,
+            ],
+        };
+        let json = serde_json::to_string(&item).unwrap();
+        assert!(json.contains(r#""kind":"submenu""#));
+        assert!(json.contains(r#""label":"More""#));
+        assert!(json.contains(r#""kind":"separator""#));
+    }
+
+    #[test]
+    fn spec_round_trips_through_serde() {
+        let spec = ContextMenuSpec {
+            target: "case:abc-123".into(),
+            items: vec![
+                ContextMenuItem::Action {
+                    id: "open".into(),
+                    label: "Open".into(),
+                    enabled: true,
+                    accelerator: None,
+                },
+                ContextMenuItem::Separator,
+                ContextMenuItem::Submenu {
+                    label: "Status".into(),
+                    items: vec![ContextMenuItem::Action {
+                        id: "status.review".into(),
+                        label: "Mark for Review".into(),
+                        enabled: true,
+                        accelerator: Some("F8".into()),
+                    }],
+                },
+            ],
+        };
+        let json = serde_json::to_string(&spec).unwrap();
+        let back: ContextMenuSpec = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.target, spec.target);
+        assert_eq!(back.items.len(), 3);
+    }
+
+    #[test]
+    fn deserialize_action_from_typescript_shape() {
+        // Matches what `src/ipc/desktop.ts::ContextMenuItem` emits.
+        let json = r#"{"kind":"action","id":"a","label":"A","enabled":true}"#;
+        let item: ContextMenuItem = serde_json::from_str(json).unwrap();
+        match item {
+            ContextMenuItem::Action { id, label, enabled, accelerator } => {
+                assert_eq!(id, "a");
+                assert_eq!(label, "A");
+                assert!(enabled);
+                assert!(accelerator.is_none());
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn result_serializes_with_chosen_id_field() {
+        let r = ContextMenuResult {
+            target: "x".into(),
+            chosen_id: Some("open".into()),
+        };
+        let json = serde_json::to_string(&r).unwrap();
+        assert!(json.contains(r#""target":"x""#));
+        assert!(json.contains(r#""chosen_id":"open""#));
+    }
+
+    #[test]
+    fn error_serializes_with_type_tag() {
+        let e = ContextMenuError::WindowNotFound("workspace:1".into());
+        let json = serde_json::to_string(&e).unwrap();
+        assert!(json.contains(r#""type":"window_not_found""#));
+    }
 }
 
 fn append_submenu_items(

@@ -16,7 +16,7 @@ use crate::auth::{self, AuthError, Permission, Principal};
 use crate::settlement::statement::SettlementStatement;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum LedgerError {
     #[error(transparent)]
     Auth(#[from] AuthError),

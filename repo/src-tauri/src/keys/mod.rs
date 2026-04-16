@@ -46,7 +46,7 @@ pub const KEYRING_SERVICE: &str = "ShorelinePropertyOps";
 pub const LABEL_MASTER_V1: &str = "master_key.v1";
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum KeyError {
     #[error("keystore error: {0}")]
     Store(String),

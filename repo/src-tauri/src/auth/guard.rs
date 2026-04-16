@@ -13,7 +13,7 @@ use crate::auth::context::Principal;
 use crate::auth::permissions::Permission;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum AuthError {
     #[error("permission denied: role '{role}' lacks '{permission}'")]
     PermissionDenied { role: String, permission: String },

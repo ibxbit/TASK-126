@@ -31,7 +31,7 @@ use crate::docs::storage::{StorageError, StorageLayout};
 pub const DEFAULT_CHUNK_SIZE: u64 = 25 * 1024 * 1024;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum ChunkError {
     #[error("unknown session: {0}")]
     UnknownSession(String),

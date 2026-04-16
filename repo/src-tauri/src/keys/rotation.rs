@@ -46,7 +46,7 @@ use uuid::Uuid;
 use crate::db::encryption::{aad_for, FieldCipher};
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum RotationError {
     #[error("persistence error: {0}")]
     Persistence(String),

@@ -30,7 +30,7 @@ use uuid::Uuid;
 use crate::auth::{self, AuthError, Permission, Principal};
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum IpcError {
     /// No principal in the session — not logged in / session expired.
     #[error("unauthenticated: session has no principal")]

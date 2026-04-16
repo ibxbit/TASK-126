@@ -40,6 +40,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install pnpm globally
 RUN npm install -g pnpm@9
 
+# Install the rustc llvm-tools + cargo-llvm-cov for coverage reports.
+# We install at the base layer so it's cached once across rebuilds.
+# `cargo-llvm-cov` is used only when `run_tests.sh --coverage` is set.
+RUN rustup component add llvm-tools-preview \
+    && cargo install --locked cargo-llvm-cov
+
 WORKDIR /app
 
 # ── Stage 2: deps ───────────────────────────────────────────────────

@@ -14,7 +14,7 @@ use crate::auth::permissions::Permission;
 use crate::auth::roles::Role;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum AssignmentError {
     #[error(transparent)]
     Auth(#[from] AuthError),

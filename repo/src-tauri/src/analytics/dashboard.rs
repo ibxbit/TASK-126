@@ -11,7 +11,7 @@ use uuid::Uuid;
 const DAY_SECONDS: i64 = 86_400;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum DashboardError {
     #[error("funnel must define at least 2 steps")]
     EmptyFunnel,

@@ -12,7 +12,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum StatementError {
     #[error("deductions ({deductions}¢) exceed total deposit ({deposit}¢)")]
     OverDeducted { deposit: i64, deductions: i64 },

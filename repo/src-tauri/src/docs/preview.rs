@@ -27,7 +27,7 @@ use crate::docs::storage::StorageLayout;
 pub const PREVIEW_BYTE_LIMIT: u64 = 10 * 1024 * 1024;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum PreviewError {
     #[error(transparent)]
     Auth(#[from] AuthError),

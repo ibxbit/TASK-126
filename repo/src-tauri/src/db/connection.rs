@@ -8,7 +8,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum DbError {
     #[error("sqlite error: {0}")]
     Sqlite(String),
@@ -110,5 +110,123 @@ impl Database {
             )?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn open_in_memory_succeeds_and_has_no_path() {
+        let db = Database::open_in_memory().expect("open");
+        assert!(db.path().is_none(), "in-memory DB has no path");
+    }
+
+    #[test]
+    fn open_creates_parent_directory_when_missing() {
+        let tmp = tempdir().unwrap();
+        let nested = tmp.path().join("nested/dir/that/does/not/exist/yet/shoreline.db");
+        let db = Database::open(&nested).expect("open creates parents");
+        assert_eq!(db.path(), Some(nested.as_path()));
+        assert!(nested.exists(), "DB file must exist on disk");
+    }
+
+    #[test]
+    fn open_sets_pragmas() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let fk: i64 = conn
+            .query_row("PRAGMA foreign_keys", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(fk, 1, "foreign keys must be ON");
+        // synchronous=NORMAL (1)
+        let sync: i64 = conn
+            .query_row("PRAGMA synchronous", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(sync, 1);
+    }
+
+    #[test]
+    fn run_migrations_creates_users_table() {
+        let db = Database::open_in_memory().unwrap();
+        db.run_migrations().expect("first migrate ok");
+        let conn = db.conn();
+        let table_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='users'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(table_count, 1);
+    }
+
+    #[test]
+    fn run_migrations_is_idempotent() {
+        let db = Database::open_in_memory().unwrap();
+        db.run_migrations().expect("first");
+        db.run_migrations().expect("second");
+        db.run_migrations().expect("third");
+
+        let conn = db.conn();
+        let applied: i64 = conn
+            .query_row("SELECT COUNT(*) FROM _migrations", [], |r| r.get(0))
+            .unwrap();
+        // 11 migrations declared in connection.rs
+        assert_eq!(applied, 11);
+    }
+
+    #[test]
+    fn run_migrations_records_each_name_in_underscore_migrations() {
+        let db = Database::open_in_memory().unwrap();
+        db.run_migrations().expect("ok");
+        let conn = db.conn();
+        let mut stmt = conn
+            .prepare("SELECT name FROM _migrations ORDER BY name")
+            .unwrap();
+        let names: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+        assert_eq!(names.len(), 11);
+        assert_eq!(names[0], "0001_initial_schema");
+        assert_eq!(names[10], "0011_key_rotation");
+    }
+
+    #[test]
+    fn run_migrations_persists_across_reopen_for_file_db() {
+        let tmp = tempdir().unwrap();
+        let path = tmp.path().join("shoreline.db");
+        {
+            let db = Database::open(&path).unwrap();
+            db.run_migrations().unwrap();
+        }
+        // Re-open the same file: nothing to apply, no error.
+        let db2 = Database::open(&path).unwrap();
+        db2.run_migrations().expect("second open re-migrates cleanly");
+        let conn = db2.conn();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM _migrations", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 11);
+    }
+
+    #[test]
+    fn db_error_serde_uses_snake_case_type_tag() {
+        let err = DbError::Migration("boom".into());
+        let json = serde_json::to_string(&err).unwrap();
+        assert!(json.contains(r#""type":"migration""#));
+    }
+
+    #[test]
+    fn from_rusqlite_wraps_into_sqlite_variant() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let res = conn.execute("SELECT * FROM nonexistent_table", []);
+        let e: DbError = res.unwrap_err().into();
+        assert!(matches!(e, DbError::Sqlite(_)));
     }
 }

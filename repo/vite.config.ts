@@ -22,5 +22,22 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    setupFiles: ["./src/test-setup.ts"],
+    // Coverage is opt-in via `pnpm test --coverage` or the test runner.
+    // We intentionally do NOT block CI on a numeric threshold here —
+    // the gate is enforced by run_tests.sh + the coverage mapping.
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov", "html"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test-setup.ts",
+        "src/test/**",
+        "src/main.tsx",
+        "src/vite-env.d.ts",
+      ],
+    },
   },
 });

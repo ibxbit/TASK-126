@@ -63,4 +63,27 @@ describe("useShortcuts", () => {
     unmount();
     expect(mockUnlisten).toHaveBeenCalledOnce();
   });
+
+  it("calls unlisten immediately if component unmounts before onShortcut resolves", async () => {
+    // Simulate slow onShortcut: the promise resolves AFTER unmount.
+    let resolveOnShortcut!: (u: () => void) => void;
+    const slowUnlisten = vi.fn();
+    vi.mocked(onShortcut).mockImplementationOnce(() => {
+      return new Promise<() => void>((resolve) => {
+        resolveOnShortcut = resolve;
+      });
+    });
+
+    const { unmount } = renderHook(() => useShortcuts({ quick_search: vi.fn() }));
+
+    // Unmount before the promise resolves — mounted=false at this point.
+    unmount();
+
+    // Now resolve: the .then() should detect mounted=false and call unlisten immediately.
+    await act(async () => {
+      resolveOnShortcut(slowUnlisten);
+    });
+
+    expect(slowUnlisten).toHaveBeenCalledOnce();
+  });
 });

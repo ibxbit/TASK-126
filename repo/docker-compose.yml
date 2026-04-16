@@ -35,11 +35,16 @@ services:
   # Runs the full test suite (Rust + TypeScript + Vitest) and exits.
   # Exit code 0 = all tests pass.  Non-zero = failure.
   # View results: docker compose logs tests
+  #
+  # To produce coverage reports (HTML + lcov) mount ./coverage on the
+  # host and set COVERAGE=1:
+  #   docker compose run -v "$(pwd)/coverage:/app/coverage" -e COVERAGE=1 tests
   tests:
     build:
       context: .
       target: tests
     environment:
       - RUST_BACKTRACE=1
+      - COVERAGE=${COVERAGE:-0}
     # Tests run once and exit; don't restart.
     restart: "no"

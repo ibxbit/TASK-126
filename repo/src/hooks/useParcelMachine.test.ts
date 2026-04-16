@@ -122,4 +122,53 @@ describe("useParcelMachine", () => {
     // Numbers get JSON.stringified via the catch-all.
     expect(result.current.error).toBeTruthy();
   });
+
+  it("extracts type field from error objects without message", async () => {
+    mockAvail.mockRejectedValueOnce({ type: "permission_denied" });
+
+    const { result } = renderHook(() =>
+      useParcelMachine("t1", "p1", "checked_in"),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBe("permission_denied");
+  });
+
+  it("returns 'Unknown error' for un-stringifiable values", async () => {
+    // A circular object causes JSON.stringify to throw, hitting the catch branch
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    mockAvail.mockRejectedValueOnce(circular);
+
+    const { result } = renderHook(() =>
+      useParcelMachine("t1", "p1", "checked_in"),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBe("Unknown error");
+  });
+
+  it("apply passes null for notes when omitted", async () => {
+    const { result } = renderHook(() =>
+      useParcelMachine("t1", "p1", "checked_in"),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.apply("checked_out", "lobby");
+    });
+
+    expect(mockTransition).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: null }),
+    );
+  });
 });

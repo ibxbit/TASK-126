@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest",
+    "test:coverage": "vitest --coverage --run",
+    "test:e2e": "npx playwright test --config e2e/playwright.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,6 +28,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^4",
+    "@vitest/coverage-v8": "^2.1.9",
     "jsdom": "^24",
     "typescript": "^5.4",
     "vite": "^5",

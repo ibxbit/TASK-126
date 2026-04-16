@@ -18,7 +18,7 @@ use crate::parcel::machine::{GuardContext, StateMachine, StateMachineError};
 use crate::parcel::state::ParcelState;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum TransitionError {
     #[error(transparent)]
     Auth(#[from] AuthError),

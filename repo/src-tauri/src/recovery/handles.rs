@@ -163,7 +163,7 @@ fn now_unix() -> i64 {
 // ── Quiesce enforcement ─────────────────────────────────────────────────
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum QuiesceError {
     /// The caller's quiesce hook itself failed (e.g. DB close errored).
     #[error("quiesce hook failed: {0}")]

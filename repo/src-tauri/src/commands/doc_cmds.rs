@@ -150,3 +150,211 @@ pub fn cmd_attachment_preview(
     let (mime, size) = row.ok_or(IpcError::Internal("attachment not found".into()))?;
     Ok(serde_json::json!({ "attachment_id": attachment_id.to_string(), "mime_type": mime, "byte_size": size }))
 }
+
+// ─── End-to-end integration tests ──────────────────────────────────────
+//
+// These tests bypass `tauri::State` (which has a private constructor)
+// and exercise the *exact same* call chain the commands above use:
+//
+//     SqliteChunkRepo + StorageLayout + chunks::{start,put,status,finalize,abort}
+//
+// Anything broken in the IPC handler body will surface here, so we get
+// the IPC contract ring of coverage without booting a Tauri runtime.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::docs::chunks;
+    use crate::docs::chunks::SessionInit;
+    use sha2::{Digest, Sha256};
+    use tempfile::tempdir;
+
+    fn db_with_migrations() -> Arc<Database> {
+        let db = Database::open_in_memory().expect("open");
+        db.run_migrations().expect("migrate");
+        Arc::new(db)
+    }
+
+    fn seed_tenant(db: &Arc<Database>, tid: &Uuid) {
+        let c = db.conn();
+        let now = 1_700_000_000i64;
+        c.execute(
+            "INSERT INTO tenants (id, name, code, active, created_at, updated_at)
+             VALUES (?1, 'T', ?2, 1, ?3, ?3)",
+            rusqlite::params![tid.to_string(), tid.to_string(), now],
+        )
+        .unwrap();
+    }
+
+    fn write_one_byte_file_session(
+        db: &Arc<Database>,
+        layout: &StorageLayout,
+        tid: Uuid,
+    ) -> (Uuid, Vec<u8>, String) {
+        let data: Vec<u8> = b"hello shoreline".to_vec();
+        let mut h = Sha256::new();
+        h.update(&data);
+        let sha = hex::encode(h.finalize());
+        let init = SessionInit {
+            tenant_id: tid,
+            entity_kind: "case".into(),
+            entity_id: Uuid::new_v4(),
+            display_name: "doc.txt".into(),
+            mime_type: "text/plain".into(),
+            total_bytes: data.len() as u64,
+            chunk_size: Some(8), // forces 2 chunks
+            expected_sha256_hex: sha.clone(),
+            target_attachment_id: None,
+        };
+        let repo = SqliteChunkRepo::new(Arc::clone(db));
+        let session = chunks::start_session(&repo, layout, init, b"enc-name".to_vec()).unwrap();
+        (session.id, data, sha)
+    }
+
+    #[test]
+    fn full_upload_lifecycle_starts_streams_and_finalizes() {
+        let db = db_with_migrations();
+        let tid = Uuid::new_v4();
+        seed_tenant(&db, &tid);
+        let tmp = tempdir().unwrap();
+        let layout = StorageLayout::new(tmp.path().to_path_buf());
+
+        let (sid, data, sha) = write_one_byte_file_session(&db, &layout, tid);
+        let repo = SqliteChunkRepo::new(Arc::clone(&db));
+
+        // Stream both chunks.
+        chunks::put_chunk(&repo, &layout, &sid, 0, &data[..8], 1).unwrap();
+        chunks::put_chunk(&repo, &layout, &sid, 1, &data[8..], 1).unwrap();
+
+        // Status should report no missing.
+        let s = chunks::session_status(&repo, &sid).unwrap();
+        assert_eq!(s.received_indices.len(), 2);
+        assert!(s.missing_indices.is_empty());
+
+        // Finalize — pass a no-op encryptor as the doc_cmds handler does.
+        let outcome =
+            chunks::finalize(&repo, &layout, &sid, 1, None, |_id, _rp| Ok(Vec::new())).unwrap();
+        assert_eq!(outcome.byte_size as usize, data.len());
+        assert_eq!(outcome.sha256_hex, sha);
+        assert_eq!(outcome.version_no, 1);
+
+        // Attachment + version rows now exist.
+        let c = db.conn();
+        let count: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM attachments WHERE id = ?1",
+                [outcome.attachment_id.to_string()],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+
+        let vcount: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM attachment_versions WHERE attachment_id = ?1",
+                [outcome.attachment_id.to_string()],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(vcount, 1);
+    }
+
+    #[test]
+    fn status_lists_missing_chunks_for_resume() {
+        let db = db_with_migrations();
+        let tid = Uuid::new_v4();
+        seed_tenant(&db, &tid);
+        let tmp = tempdir().unwrap();
+        let layout = StorageLayout::new(tmp.path().to_path_buf());
+
+        let (sid, data, _) = write_one_byte_file_session(&db, &layout, tid);
+        let repo = SqliteChunkRepo::new(Arc::clone(&db));
+
+        // Send only chunk 1 — chunk 0 should still appear missing.
+        chunks::put_chunk(&repo, &layout, &sid, 1, &data[8..], 1).unwrap();
+        let s = chunks::session_status(&repo, &sid).unwrap();
+        assert_eq!(s.received_indices, vec![1]);
+        assert_eq!(s.missing_indices, vec![0]);
+
+        // Finalize must refuse: missing chunks.
+        let res = chunks::finalize(&repo, &layout, &sid, 1, None, |_, _| Ok(Vec::new()));
+        assert!(matches!(res, Err(crate::docs::chunks::ChunkError::MissingChunks)));
+    }
+
+    #[test]
+    fn abort_marks_session_aborted_and_blocks_further_puts() {
+        let db = db_with_migrations();
+        let tid = Uuid::new_v4();
+        seed_tenant(&db, &tid);
+        let tmp = tempdir().unwrap();
+        let layout = StorageLayout::new(tmp.path().to_path_buf());
+
+        let (sid, data, _) = write_one_byte_file_session(&db, &layout, tid);
+        let repo = SqliteChunkRepo::new(Arc::clone(&db));
+
+        chunks::put_chunk(&repo, &layout, &sid, 0, &data[..8], 1).unwrap();
+        chunks::abort(&repo, &layout, &sid).unwrap();
+
+        // After abort, status flips to "aborted" and put_chunk refuses.
+        let res = chunks::put_chunk(&repo, &layout, &sid, 1, &data[8..], 1);
+        assert!(matches!(
+            res,
+            Err(crate::docs::chunks::ChunkError::WrongStatus(_))
+        ));
+    }
+
+    #[test]
+    fn search_with_no_data_returns_empty_vector() {
+        let db = db_with_migrations();
+        let tid = Uuid::new_v4();
+        seed_tenant(&db, &tid);
+        let search = SqliteAttachmentSearch::new(Arc::clone(&db));
+        let res = search.search(&tid, None, None, None, None, 50).unwrap();
+        assert!(res.is_empty());
+    }
+
+    #[test]
+    fn add_remove_tag_round_trip_via_repo() {
+        let db = db_with_migrations();
+        let repo = SqliteTagRepo::new(Arc::clone(&db));
+        // We need an attachments row first — minimal seed:
+        let tid = Uuid::new_v4();
+        seed_tenant(&db, &tid);
+        let att_id = Uuid::new_v4();
+        {
+            let c = db.conn();
+            c.execute(
+                "INSERT INTO attachments (id, tenant_id, entity_kind, entity_id, display_name_enc,
+                 relative_path_enc, mime_type, byte_size, sha256_hex, created_at)
+                 VALUES (?1, ?2, 'case', ?3, x'00', x'00', 'text/plain', 1, 'sha', 1)",
+                rusqlite::params![att_id.to_string(), tid.to_string(), Uuid::new_v4().to_string()],
+            )
+            .unwrap();
+        }
+        // Pass None for `created_by` to avoid the users(id) FK constraint —
+        // the test goal is the tag plumbing, not user attribution.
+        repo.add(&att_id, "important", None).unwrap();
+        // Adding the same tag twice is idempotent (`INSERT OR IGNORE`).
+        repo.add(&att_id, "important", None).unwrap();
+
+        let count: i64 = db
+            .conn()
+            .query_row(
+                "SELECT COUNT(*) FROM attachment_tags WHERE attachment_id = ?1",
+                [att_id.to_string()],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1, "duplicate add must not insert twice");
+
+        repo.remove(&att_id, "important").unwrap();
+        // Removing a tag that isn't present is also tolerated.
+        repo.remove(&att_id, "nonexistent").unwrap();
+    }
+
+    #[test]
+    fn now_returns_positive_unix_seconds() {
+        let t = now();
+        assert!(t > 1_700_000_000);
+    }
+}

@@ -24,7 +24,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum RecoveryError {
     #[error("io error: {0}")]
     Io(String),

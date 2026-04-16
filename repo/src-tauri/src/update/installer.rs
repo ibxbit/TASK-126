@@ -25,7 +25,7 @@ use crate::auth::{self, AuthError, Permission, Principal};
 use crate::update::verifier::VerifiedPackage;
 
 #[derive(Debug, Error, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "detail", rename_all = "snake_case")]
 pub enum InstallError {
     #[error(transparent)]
     Auth(#[from] AuthError),
