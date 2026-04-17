@@ -42,70 +42,77 @@ for arg in "$@"; do
   esac
 done
 
-# ─── Detect container vs host ──────────────────────────────────────────
+# ─── Detect execution context ──────────────────────────────────────────
+#
+# We distinguish three contexts:
+#  1. OUR test container   — has /app + the Rust toolchain + pnpm. Run tests natively.
+#  2. CI orchestrator host — likely itself a container (/.dockerenv exists, /proc/1/cgroup
+#                            mentions docker), but has NO rust/node installed. It should
+#                            delegate to `docker compose run tests`.
+#  3. Developer workstation — host OS with tools installed.
+#
+# The historical check for `/.dockerenv || /proc/1/cgroup` flagged every CI runner as
+# "inside container" and then required cargo/pnpm — which meant the CI host (that has
+# neither) failed with `[fatal] required tool 'cargo' not found inside container`.
+# We now treat missing tools on a "container-but-no-tools" host as a *delegation signal*.
 IN_CONTAINER=0
 if [ -f /.dockerenv ] || grep -qsE 'docker|containerd' /proc/1/cgroup 2>/dev/null; then
   IN_CONTAINER=1
-  echo "[info] Running inside container"
 fi
 
-CARGO_TEST_EXTRA_ARGS=""
-if [ "$IN_CONTAINER" = "1" ]; then
-  # No Windows Credential Manager in headless Linux — keys::tests would
-  # error. Skipping is intentional and documented in README.
-  CARGO_TEST_EXTRA_ARGS="-- --skip keys::tests"
+HAVE_CARGO=0; HAVE_PNPM=0; HAVE_NPM=0; HAVE_DOCKER=0
+command -v cargo  >/dev/null 2>&1 && HAVE_CARGO=1
+command -v pnpm   >/dev/null 2>&1 && HAVE_PNPM=1
+command -v npm    >/dev/null 2>&1 && HAVE_NPM=1
+command -v docker >/dev/null 2>&1 && HAVE_DOCKER=1
+
+# Identify OUR test container: presence of /app + cargo. Anything else with
+# the in-container signal is treated as an orchestrator host.
+IN_OUR_TEST_CONTAINER=0
+if [ "$IN_CONTAINER" = "1" ] && [ "$HAVE_CARGO" = "1" ] && [ -d /app/src-tauri ]; then
+  IN_OUR_TEST_CONTAINER=1
+  echo "[info] Running inside project test container"
 fi
 
-# ─── Pre-flight: required tools must be present ───────────────────────
+# ─── Delegation to docker compose (CI orchestrator path) ──────────────
 #
-# Outside Docker we *refuse* to silently skip a phase: a missing tool
-# means the user must either install it, set ALLOW_HOST_TOOLING=1 to
-# acknowledge the partial run, or use the Docker path
-# (`docker compose run tests`).
-require_tool() {
-  local tool="$1"
-  if command -v "$tool" >/dev/null 2>&1; then return 0; fi
-  if [ "$IN_CONTAINER" = "1" ]; then
-    # Inside Docker, a missing tool is a build-image bug. Fail loud.
-    echo "[fatal] required tool '$tool' not found inside container" >&2
-    exit 2
-  fi
+# If we're on a host that can't run the tests natively (missing cargo/pnpm)
+# but Docker is available, transparently dispatch to `docker compose run tests`.
+# This lets a single `./run_tests.sh` invocation succeed from:
+#   • a developer's machine with docker desktop + no local Rust
+#   • a CI orchestrator container that has docker but no Rust toolchain
+#   • our own test container (runs natively)
+TOOLS_MISSING=0
+if [ "$HAVE_CARGO" != "1" ] || { [ "$HAVE_PNPM" != "1" ] && [ "$HAVE_NPM" != "1" ]; }; then
+  TOOLS_MISSING=1
+fi
+
+if [ "$TOOLS_MISSING" = "1" ] && [ "$IN_OUR_TEST_CONTAINER" != "1" ]; then
   if [ "${ALLOW_HOST_TOOLING:-0}" = "1" ]; then
-    echo "[warn] '$tool' missing on host; ALLOW_HOST_TOOLING=1 — skipping its phase"
-    return 1
-  fi
-  cat >&2 <<EOF
-[fatal] required tool '$tool' is not installed.
+    echo "[warn] required tools missing; ALLOW_HOST_TOOLING=1 — attempting best-effort native run"
+  elif [ "$HAVE_DOCKER" = "1" ] && [ -f docker-compose.yml ]; then
+    echo "[info] required tools unavailable on host — delegating to 'docker compose run --rm tests'"
+    exec docker compose run --rm tests
+  else
+    cat >&2 <<EOF
+[fatal] test tools are not installed and Docker is unavailable.
 
-This runner does not silently skip test phases. Either:
+Pick one of:
 
-  • Install '$tool' on the host, OR
-  • Use the Docker path:   docker compose run tests
+  • Install Rust (cargo) + pnpm/npm on this host, OR
+  • Install Docker and run: docker compose run tests
   • Acknowledge a partial run by exporting ALLOW_HOST_TOOLING=1
 
 EOF
-  exit 2
-}
-
-HAVE_CARGO=0
-HAVE_PNPM=0
-HAVE_NPM=0
-
-if require_tool cargo; then HAVE_CARGO=1; fi
-if command -v pnpm >/dev/null 2>&1; then
-  HAVE_PNPM=1
-elif command -v npm >/dev/null 2>&1; then
-  # pnpm is preferred but not strictly required if npm is available.
-  HAVE_NPM=1
-else
-  if [ "$IN_CONTAINER" = "1" ]; then
-    echo "[fatal] neither pnpm nor npm available inside container" >&2
     exit 2
   fi
-  if [ "${ALLOW_HOST_TOOLING:-0}" != "1" ]; then
-    echo "[fatal] neither pnpm nor npm found on host. Install pnpm 9 or set ALLOW_HOST_TOOLING=1." >&2
-    exit 2
-  fi
+fi
+
+CARGO_TEST_EXTRA_ARGS=""
+if [ "$IN_OUR_TEST_CONTAINER" = "1" ]; then
+  # No Windows Credential Manager in headless Linux — keys::tests would
+  # error. Skipping is intentional and documented in README.
+  CARGO_TEST_EXTRA_ARGS="-- --skip keys::tests"
 fi
 
 # ─── Phase status accumulators ────────────────────────────────────────
